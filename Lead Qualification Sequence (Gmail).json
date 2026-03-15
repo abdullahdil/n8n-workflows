@@ -1,0 +1,2107 @@
+{
+  "name": "Lead Qualification Sequence (Gmail)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "69f9dab6-54d4-419c-baf2-577b6b3bab0d",
+        "formTitle": "Lead Qualification Form",
+        "formDescription": "Submit a new lead to start the automated 7-day follow-up sequence.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "First Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Last Name"
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "Source",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Website"
+                  },
+                  {
+                    "option": "Referral"
+                  },
+                  {
+                    "option": "LinkedIn"
+                  },
+                  {
+                    "option": "Cold Outreach"
+                  },
+                  {
+                    "option": "Event"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4c1ca5c9-0973-46dd-a779-e5ea9d81cf97",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        -2448,
+        96
+      ],
+      "webhookId": "69f9dab6-54d4-419c-baf2-577b6b3bab0d"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "leadId",
+              "value": "={{ 'lead_' + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "email",
+              "value": "={{ $json['Email'].toLowerCase().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "firstName",
+              "value": "={{ $json['First Name'].trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "lastName",
+              "value": "={{ $json['Last Name'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "company",
+              "value": "={{ $json['Company'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "source",
+              "value": "={{ $json['Source'] || 'Unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "enteredAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "f8",
+              "name": "status",
+              "value": "active",
+              "type": "string"
+            },
+            {
+              "id": "f9",
+              "name": "touchCount",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "f10",
+              "name": "replied",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "f11",
+              "name": "threadId",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "630544bd-2ce0-454d-b801-3a03d67e2877",
+              "name": "lastTouch",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cd1ff35f-1fdf-4c17-9266-b66e0a4f2630",
+      "name": "Set Lead Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2208,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "08347448-1709-4cc4-909f-3b60f219724b",
+      "name": "Log Lead to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1840,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Quick question about {{ $json.company || 'your workflow' }}, {{ $json.firstName }}",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<style>\nbody{\n  font-family:'Helvetica Neue',Arial,sans-serif;\n  font-size:15px;\n  color:#1a1a1a;\n  line-height:1.7;\n  margin:0;\n  padding:0;\n  background:#f9f9f9\n}\n.wrapper{\n  max-width:620px;\n  margin:40px auto;\n  background:#fff;\n  border-radius:8px;\n  overflow:hidden;\n  box-shadow:0 2px 12px rgba(0,0,0,.07)\n}\n.header{\n  background:#0f172a;\n  padding:28px 40px\n}\n.header span{\n  color:#fff;\n  font-size:18px;\n  font-weight:700\n}\n.body{\n  padding:36px 40px\n}\n.body p{\n  margin:0 0 18px\n}\n.cta-btn{\n  display:inline-block;\n  margin:8px 0 24px;\n  padding:13px 28px;\n  background:#2563eb;\n  color:#fff!important;\n  border-radius:6px;\n  text-decoration:none;\n  font-weight:600;\n  font-size:14px\n}\n.footer{\n  background:#f1f5f9;\n  padding:20px 40px;\n  font-size:12px;\n  color:#94a3b8\n}\n.footer a{\n  color:#64748b;\n  text-decoration:underline\n}\n.divider{\n  height:1px;\n  background:#e2e8f0;\n  margin:24px 0\n}\n</style>\n</head>\n\n<body>\n\n<div class=\"wrapper\">\n\n<div class=\"header\">\n<span>Goodspeed Studio</span>\n</div>\n\n<div class=\"body\">\n\n<p>Hey {{ $json.firstName }},</p>\n\n<p>I came across your work at <strong>{{ $json.company }} </strong> and wanted to reach out quickly.</p>\n\n<p>We’ve been helping teams automate their lead follow-up and outbound workflows so prospects don’t fall through the cracks and responses happen automatically.</p>\n\n<p>I recorded a quick <a href=\"YOUR_LOOM_VIDEO_URL\">4-minute Loom video</a> walking through how the system works and how teams are using it to increase replies without adding manual work.</p>\n\n<p>If it looks relevant for what you're doing, happy to show you how it could fit your workflow.</p>\n\n<a href=\"YOUR_CALENDAR_LINK\" class=\"cta-btn\">📅 Book a 20-min Call</a>\n\n<div class=\"divider\"></div>\n\n<p style=\"margin:0\">\nBest,<br>\n<strong>Your Name</strong><br>\n<span style=\"color:#64748b;font-size:13px\">\nYourCompany · you@gmail.com\n</span>\n</p>\n\n</div>\n\n<div class=\"footer\">\nYou received this message because your company fits the profile of teams we work with.  \n<a href=\"#\">Unsubscribe</a>.\n</div>\n\n</div>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "4364f17c-259d-4e59-a039-b91c50c8537d",
+      "name": "Email 1 - Day 0",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -1584,
+        96
+      ],
+      "webhookId": "5f23091c-a006-42b8-9d80-7b62b8ef7bb5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mP2VTMOvHvDMoL3N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Set Lead Fields').item.json.leadId }}",
+            "threadId": "={{ $json.threadId }}",
+            "touchCount": "={{ $('Set Lead Fields').item.json.touchCount  + 1}}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6528c901-d44a-4d9b-84a8-f90836fc83c9",
+      "name": "Save ThreadId and Touch 1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1296,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "5e7ba735-16a2-464c-8c03-609b861fd0ce",
+      "name": "Wait 48h (Day 2)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1008,
+        96
+      ],
+      "webhookId": "wh-wait-48h-day2"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "leadId",
+              "lookupValue": "={{ $('Set Lead Fields').item.json.leadId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3323adb4-0633-43f2-acf4-5fd678058e09",
+      "name": "Read Status Day 2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -720,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.replied }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "d690888b-da0b-43a1-8fff-a0d4eb87c5dd",
+      "name": "Replied? Day 2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Read Status Day 2').item.json.leadId }}",
+            "status": "replied",
+            "lastTouch": "=Sequence stopped - replied before Day {{ $('Read Status Day 2').item.json.touchCount  +1 }}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastTouch",
+              "displayName": "lastTouch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a4fadbd5-766e-442d-84a0-8e9f34b6e61b",
+      "name": "Stop - Replied Day 2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        -64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Re: Quick question about {{ $('Set Lead Fields').item.json.company || 'your workflow' }}, {{ $('Set Lead Fields').item.json.firstName }}",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<style>\nbody{font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;margin:0;padding:0;background:#f9f9f9}\n.wrapper{max-width:620px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)}\n.header{background:#0f172a;padding:28px 40px}\n.header span{color:#fff;font-size:18px;font-weight:700}\n.body{padding:36px 40px}\n.body p{margin:0 0 18px}\n.cta-btn{display:inline-block;margin:8px 0 24px;padding:13px 28px;background:#2563eb;color:#fff!important;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px}\n.footer{background:#f1f5f9;padding:20px 40px;font-size:12px;color:#94a3b8}\n.footer a{color:#64748b;text-decoration:underline}\n.divider{height:1px;background:#e2e8f0;margin:24px 0}\n</style>\n</head>\n\n<body>\n\n<div class=\"wrapper\">\n\n<div class=\"header\">\n<span>Goodspeed Studio</span>\n</div>\n\n<div class=\"body\">\n\n<p>Hey {{ $json.firstName }},</p>\n\n<p>Floating this back to the top of your inbox — I know things get busy.</p>\n\n<p>The <a href=\"YOUR_LOOM_VIDEO_URL\">short Loom video</a> I sent walks through how we help teams automate lead follow-up. Worth 4 minutes if you haven't watched yet.</p>\n\n<p>If the timing isn't right just say the word — happy to circle back next quarter.</p>\n\n<a href=\"YOUR_CALENDAR_LINK\" class=\"cta-btn\">📅 Book a 20-min Call</a>\n\n<div class=\"divider\"></div>\n\n<p style=\"margin:0\">\nBest,<br>\n<strong>Your Name</strong><br>\n<span style=\"color:#64748b;font-size:13px\">\nGoodspeed Studio · you@gmail.com\n</span>\n</p>\n\n</div>\n\n<div class=\"footer\">\nYou received this as part of our qualification follow-up.  \n<a href=\"#\">Unsubscribe</a>.\n</div>\n\n</div>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "98afc4ea-3648-4b4e-8fd4-45c1301d0754",
+      "name": "Email 2 - Day 2",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        240
+      ],
+      "webhookId": "b6b281dc-d48e-41e9-8159-bbfde3fb0548",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mP2VTMOvHvDMoL3N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "touchCount": "={{ $('Save ThreadId and Touch 1').item.json.touchCount + 1 }}",
+            "leadId": "={{ $('Save ThreadId and Touch 1').item.json.leadId }}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7fd4ede0-6df6-4c27-91e8-5c28c8d71230",
+      "name": "Update Touch 2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -64,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "06eb0146-f6f8-468c-bff7-a0f42f7b99fb",
+      "name": "Wait 72h (Day 5)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        48
+      ],
+      "webhookId": "wh-wait-72h-day5"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "leadId",
+              "lookupValue": "={{ $('Set Lead Fields').item.json.leadId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26832c8b-6d7d-45b3-84ae-53a0e80997f3",
+      "name": "Read Status Day 5",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        496,
+        48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.replied }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "6cdc7d36-d3dd-4098-8e09-821b77338d31",
+      "name": "Replied? Day 5",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        704,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Closing the loop, {{ $('Set Lead Fields').item.json.firstName }}",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<style>\nbody{font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;margin:0;padding:0;background:#f9f9f9}\n.wrapper{max-width:620px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)}\n.header{background:#0f172a;padding:28px 40px}\n.header span{color:#fff;font-size:18px;font-weight:700}\n.body{padding:36px 40px}\n.body p{margin:0 0 18px}\n.cta-btn{display:inline-block;margin:8px 0 24px;padding:13px 28px;background:#2563eb;color:#fff!important;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px}\n.footer{background:#f1f5f9;padding:20px 40px;font-size:12px;color:#94a3b8}\n.footer a{color:#64748b;text-decoration:underline}\n.divider{height:1px;background:#e2e8f0;margin:24px 0}\n</style>\n</head>\n\n<body>\n\n<div class=\"wrapper\">\n\n<div class=\"header\">\n<span>Goodspeed Studio</span>\n</div>\n\n<div class=\"body\">\n\n<p>Hi {{ $('Log Lead to Sheets').item.json.firstName }},</p>\n\n<p>I completely understand — inboxes can be relentless and I don't want to add to the noise.</p>\n\n<p>I genuinely think we could help {{ $json.company || 'your team' }} save serious time on lead follow-up. But if now isn't the right moment, that's okay.</p>\n\n<p>Closing the loop on my end — but the door is always open. If things change, you know where to find me.</p>\n\n<a href=\"YOUR_CALENDAR_LINK\" class=\"cta-btn\">📅 Let's Talk — Book a Time</a>\n\n<div class=\"divider\"></div>\n\n<p style=\"margin:0\">\nWarmly,<br>\n<strong>Your Name</strong><br>\n<span style=\"color:#64748b;font-size:13px\">\nGoodspeed Studio · you@gmail.com\n</span>\n</p>\n\n</div>\n\n<div class=\"footer\">\nThis is the final email in this sequence.  \n<a href=\"#\">Unsubscribe</a>.\n</div>\n\n</div>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "09f6389f-b13d-44b7-8bca-5b4de1bc3123",
+      "name": "Email 3 - Day 5",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        960,
+        224
+      ],
+      "webhookId": "b6da1ee8-79e5-416d-a7b7-ce030d258c6b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mP2VTMOvHvDMoL3N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Replied? Day 5').item.json.leadId }}",
+            "touchCount": "={{ $('Replied? Day 5').item.json.touchCount + 1}}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "42e7f64a-64aa-4388-8427-315043f0dd4a",
+      "name": "Update Touch 3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1232,
+        224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "90053db1-be0c-40a3-a02c-fff7bd88cf29",
+      "name": "Wait 48h (Day 7)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        48
+      ],
+      "webhookId": "wh-wait-48h-day7"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "leadId",
+              "lookupValue": "={{ $('Update Touch 3').item.json.leadId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "af7985b3-f989-4750-b524-2edf29d2ef6f",
+      "name": "Read Status Day 7",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1872,
+        48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.replied }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "927ec9d1-ce33-41b6-9cc1-44905e5513b9",
+      "name": "Replied? Day 7",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=One last thought, {{ $('Set Lead Fields').item.json.firstName }}",
+        "message": "=<!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <style> body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;margin:0;padding:0;background:#f9f9f9} .wrapper{max-width:620px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07)} .header{background:#0f172a;padding:28px 40px} .header span{color:#fff;font-size:18px;font-weight:700} .body{padding:36px 40px} .body p{margin:0 0 18px} .cta-link{color:#2563eb;font-weight:600;text-decoration:underline} .footer{background:#f1f5f9;padding:20px 40px;font-size:12px;color:#94a3b8} .footer a{color:#64748b;text-decoration:underline} .divider{height:1px;background:#e2e8f0;margin:24px 0} </style> </head>  <body>  <div class=\"wrapper\">  <div class=\"header\"> <span>Goodspeed Studio</span> </div>  <div class=\"body\">  <p> {{ $json.firstName }},</p>  <p>This is genuinely my last email — I promise.</p>  <p>If lead qualification or follow-up automation ever becomes a priority, I'd love to be the first person you call.</p>  <p><a href=\"YOUR_CALENDAR_LINK\" class=\"cta-link\">My calendar is always here.</a></p>  <p>Rooting for you and {{ $json.company }} regardless.</p>  <div class=\"divider\"></div>  <p style=\"margin:0\"> Take care,<br> <strong>Your Name</strong><br> <span style=\"color:#64748b;font-size:13px\"> Goodspeed Studio · you@gmail.com </span> </p>  </div>  <div class=\"footer\"> This is the final email. No more follow-ups after this.   <a href=\"#\">Unsubscribe</a>. </div>  </div>  </body> </html>",
+        "options": {}
+      },
+      "id": "689db0f7-2ba4-4816-ae0d-261f64dcb35c",
+      "name": "Email 4 - Day 7",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        256
+      ],
+      "webhookId": "9d61c7cb-31d4-430f-b80b-429f6f625dcd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mP2VTMOvHvDMoL3N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Read Status Day 7').item.json.leadId }}",
+            "status": "unresponsive",
+            "touchCount": "={{ $('Read Status Day 7').item.json.touchCount + 1 }}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f37be2d5-32c2-4811-ab7f-b57bdda20a3b",
+      "name": "Update Touch 4 - Mark Unresponsive",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2896,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Read Status Day 2').item.json.leadId }}",
+            "status": "replied",
+            "lastTouch": "=Sequence stopped - replied before Day {{ $('Read Status Day 2').item.json.touchCount  +1 }}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastTouch",
+              "displayName": "lastTouch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a3d92d74-6fdc-49d1-83ed-838dd7054fd1",
+      "name": "Stop - Replied Day ",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        976,
+        -96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/182DIFo8PpNfku-ku6fAZL1oOvQeq9TyKv_qpkql0GF8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "leadId": "={{ $('Read Status Day 2').item.json.leadId }}",
+            "status": "replied",
+            "lastTouch": "=Sequence stopped - replied before Day {{ $('Read Status Day 2').item.json.touchCount  +1 }}"
+          },
+          "matchingColumns": [
+            "leadId"
+          ],
+          "schema": [
+            {
+              "id": "leadId",
+              "displayName": "leadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firstName",
+              "displayName": "firstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastName",
+              "displayName": "lastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "enteredAt",
+              "displayName": "enteredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "touchCount",
+              "displayName": "touchCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "replied",
+              "displayName": "replied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lastTouch",
+              "displayName": "lastTouch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9392b15e-53b3-4b02-9d84-c5f26ff1a457",
+      "name": "Stop - Replied Day 3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2544,
+        -112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "W1wDMg5FKdKuGVHR",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 320,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2592,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "d9ce8ad5-a21a-4883-8be4-2af58b66ccc4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 336,
+        "width": 752,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1904,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "7608ff99-9a0c-49ba-80c8-bb05996ddc97",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 576,
+        "width": 880,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "ae49b9f6-d925-4845-a9cb-b37389b68249",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 576,
+        "width": 960,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "377fa702-1d5e-46c7-959a-94a91b7f29c3",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 560,
+        "width": 1344
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1760,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "031be8ef-fcef-4320-bc1e-a3234aa5be2c",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow Trigger\nCan be triggered by a webhook but right now being triggered by everytime a form is being submitted.",
+        "height": 112,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2592,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "6cf9b67d-9eea-49d5-a0aa-bf5d1528728f",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Email 1 — Day 0 (Initial Qualifier)\nThe Email is being sent to the lead for the first time and is being recorded in the google sheets for furthur record.",
+        "height": 112,
+        "width": 752,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1904,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "2712b05e-6d83-4c1a-88cf-95667dd05ffd",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Email 2 — Day 2 (Gentle Bump)\nThe Email is being sent to the lead for the second time  and the touch count field is being set to save the record of how many times we have actually sent the email to the lead.",
+        "height": 112,
+        "width": 880,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "1e8e6a9e-0ec8-4a4d-90db-d9affcc543dd",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Email 3 — Day 5 or 7 (Final Call / Break-up Email)\nThe Second Last Call in our case to our lead.",
+        "height": 112,
+        "width": 960,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "11086321-b5de-468f-a2ee-3322744e5574",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Email 4 — Final Nudge\nThis is the Final Email. After this we are going to mark our lead as unresponsive and not worry about it. ",
+        "height": 112,
+        "width": 1328
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1760,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "2f07f704-b9de-4f50-ace9-2006220f2b09",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Made by : Abdullah Dilshad",
+        "height": 80,
+        "width": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "286f43ed-763f-4a56-8bf4-b5c05770d276",
+      "name": "Sticky Note10"
+    }
+  ],
+  "pinData": {
+    "Set Lead Fields": [
+      {
+        "json": {
+          "leadId": "lead_1773345194326",
+          "email": "iamabdullahdilshad@gmail.com",
+          "firstName": "Abdullah",
+          "lastName": "Dilshad",
+          "company": "Abdullah's Name",
+          "source": "Website",
+          "enteredAt": "2026-03-13T00:53:14.327+05:00",
+          "status": "active",
+          "touchCount": 0,
+          "replied": "false",
+          "threadId": ""
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Lead Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Lead Fields": {
+      "main": [
+        [
+          {
+            "node": "Log Lead to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Email 1 - Day 0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 1 - Day 0": {
+      "main": [
+        [
+          {
+            "node": "Save ThreadId and Touch 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save ThreadId and Touch 1": {
+      "main": [
+        [
+          {
+            "node": "Wait 48h (Day 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 48h (Day 2)": {
+      "main": [
+        [
+          {
+            "node": "Read Status Day 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Status Day 2": {
+      "main": [
+        [
+          {
+            "node": "Replied? Day 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replied? Day 2": {
+      "main": [
+        [
+          {
+            "node": "Stop - Replied Day 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email 2 - Day 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 2 - Day 2": {
+      "main": [
+        [
+          {
+            "node": "Update Touch 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Touch 2": {
+      "main": [
+        [
+          {
+            "node": "Wait 72h (Day 5)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 72h (Day 5)": {
+      "main": [
+        [
+          {
+            "node": "Read Status Day 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Status Day 5": {
+      "main": [
+        [
+          {
+            "node": "Replied? Day 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replied? Day 5": {
+      "main": [
+        [
+          {
+            "node": "Stop - Replied Day ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email 3 - Day 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 3 - Day 5": {
+      "main": [
+        [
+          {
+            "node": "Update Touch 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Touch 3": {
+      "main": [
+        [
+          {
+            "node": "Wait 48h (Day 7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 48h (Day 7)": {
+      "main": [
+        [
+          {
+            "node": "Read Status Day 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Status Day 7": {
+      "main": [
+        [
+          {
+            "node": "Replied? Day 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replied? Day 7": {
+      "main": [
+        [
+          {
+            "node": "Stop - Replied Day 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email 4 - Day 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email 4 - Day 7": {
+      "main": [
+        [
+          {
+            "node": "Update Touch 4 - Mark Unresponsive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "153ae1bf-204a-4ec2-a4eb-d5916cbca81d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d256ab453a7d8c548a535ce5d29003b7b0d3abf6dc0e686affe3cdd68cf575b4"
+  },
+  "id": "epqpDmrLmNvzug3f",
+  "tags": []
+}
