@@ -1,0 +1,760 @@
+{
+  "name": "n8n month challenge",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbox-inferno",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cb59f95e-f45a-4a62-ac99-6b7c6deaf206",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        192
+      ],
+      "webhookId": "aa41cafa-2c7e-48be-a9ec-15a707295823"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise Email and Check for Misdirection\nconst item = $input.first().json;\n\n// Allowed Nexus domains\nconst nexusDomains = ['nexusintegrations.com', 'nexus-integrations.com'];\n\n// Function to clean email strings\n// Removes Markdown links [email](mailto:email) and trims spaces\nconst cleanEmail = str => {\n  if (!str) return '';\n  // Remove [text](mailto:email) style formatting\n  return str.replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1').trim();\n};\n\n// Normalize fields\nconst from = cleanEmail(item.from);\nconst to = cleanEmail(item.to);\nconst subject = (item.subject || '').trim();\nconst body = (item.body || '').trim();\n\n// Validate required fields\nif (!from || !body) {\n  throw new Error('Missing required fields: from and body are required.');\n}\n\n// Initialize misdirected flag\nlet isMisdirected = false;\n\n// Check all recipients\nif (to) {\n  // Split by comma for multiple recipients, trim spaces, lowercase\n  const recipients = to.split(',').map(email => email.trim().toLowerCase());\n\n  // Check if any recipient is outside allowed domains\n  for (let recipient of recipients) {\n    const domain = recipient.split('@')[1] || '';\n    if (domain && !nexusDomains.includes(domain)) {\n      isMisdirected = true;\n      break; // One misdirected recipient is enough\n    }\n  }\n}\n\n// Return normalized email object\nreturn [{ json: { from, to, subject, body, isMisdirected } }];"
+      },
+      "id": "01a36fef-2848-459a-86e2-c3d314c7e673",
+      "name": "Normalise Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isMisdirected }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "id": "43ac8c04-df37-401d-95dc-b225325ebac5"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9392c2a0-d458-4975-9b0d-92675a63182d",
+      "name": "Misdirected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Misdirected Reply\nconst item = $input.first().json;\n\nreturn [{\n  json: {\n    from: item.from,\n    to: item.to,\n    subject: item.subject,\n    body: item.body,\n    category: 'misdirected',\n    draft_reply: `Hi,\\n\\nThank you for reaching out. It appears your email may have been sent to the wrong address. Nexus Integrations handles integration and automation solutions — if you intended to contact us, please email support@nexusintegrations.com directly.\\n\\nIf this was meant for another company, we apologise for any confusion.\\n\\nBest regards,\\nNexus Integrations Support Team`,\n    requires_human: false,\n    action: 'reply'\n  }\n}];"
+      },
+      "id": "41ae66e8-a4b0-46b1-a77b-5dbbed971e92",
+      "name": "Misdirected Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Classification Node - Robust for GPT Chat API output\nconst item = $input.first().json;\n\n// Extract the inner content string\nlet rawText = '{}';\nif (item?.message?.content) {\n  rawText = item.message.content;\n} else if (item?.choices?.[0]?.message?.content) {\n  rawText = item.choices[0].message.content;\n}\n\n// Remove any Markdown/code block backticks or extra whitespace\nrawText = rawText.replace(/```json|```/g, '').trim();\n\nlet classification;\ntry {\n  classification = JSON.parse(rawText);\n} catch (e) {\n  classification = {\n    category: 'escalate_support',\n    confidence: 0,\n    reasoning: 'Parse error',\n    urgency: 'high'\n  };\n}\n\n// Ensure category is valid\nconst validCategories = ['pricing','setup','security','hr','escalate_sales','escalate_support','escalate_legal','escalate_finance','spam','misdirected'];\nif (!validCategories.includes(classification.category)) {\n  classification.category = 'escalate_support';\n}\n\n// Apply low confidence fallback\nif (!classification.confidence || classification.confidence < 0.7) {\n  classification.category = 'escalate_support';\n}\n\n// Pull original email from \"Normalise Email\" node\nconst emailData = $('Normalise Email').first().json;\n\n// Return clean, flattened object\nreturn [{\n  json: {\n    from: emailData.from,\n    to: emailData.to,\n    subject: emailData.subject,\n    body: emailData.body,\n    category: classification.category,\n    confidence: classification.confidence,\n    reasoning: classification.reasoning,\n    urgency: classification.urgency\n  }\n}];"
+      },
+      "id": "99f93e63-b5bb-4937-a80c-92d9af4a2cd2",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "escalate_",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              },
+              "id": "a69c4397-1f02-4594-b87e-cdbea9b1ab7e"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a9594db0-8057-47f6-82d4-eec98631df94",
+      "name": "Needs Escalation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        544,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Draft Escalation Reply - Polished Version\nconst item = $input.first().json;\n\n// Define escalation templates with more professional, human-like responses\nconst escalationMap = {\n  escalate_sales: {\n    team: 'Sales',\n    action: 'escalate_sales',\n    message: `Hi ${item.from.split('@')[0].replace(/[.\\-_]/g, ' ')},\\n\\nThank you for reaching out and for your interest in Nexus Integrations! We understand that your team is evaluating our platform and exploring options for your deployment.\\n\\nI’ve escalated your message to our Sales team, who will review your requirements in detail and get back to you promptly with a tailored solution that fits your needs.\\n\\nBest regards,\\nNexus Integrations Support Team`\n  },\n  escalate_support: {\n    team: 'Engineering',\n    action: 'escalate_support',\n    message: `Hi ${item.from.split('@')[0].replace(/[.\\-_]/g, ' ')},\\n\\nThank you for contacting Nexus Integrations. We recognize that this is an important issue and want to ensure it’s handled quickly and efficiently.\\n\\nI’ve escalated your case to our Engineering team. A specialist will reach out to you shortly to resolve your concern.\\n\\nWe appreciate your patience.\\n\\nBest regards,\\nNexus Integrations Support Team`\n  },\n  escalate_legal: {\n    team: 'Legal',\n    action: 'escalate_legal',\n    message: `Hi ${item.from.split('@')[0].replace(/[.\\-_]/g, ' ')},\\n\\nThank you for your message. We take requests involving legal agreements or compliance matters very seriously.\\n\\nYour correspondence has been forwarded to our Legal team, who will review your request thoroughly and respond as soon as possible.\\n\\nBest regards,\\nNexus Integrations Support Team`\n  },\n  escalate_finance: {\n    team: 'Finance',\n    action: 'escalate_finance',\n    message: `Hi ${item.from.split('@')[0].replace(/[.\\-_]/g, ' ')},\\n\\nThank you for reaching out regarding your billing or invoice issue.\\n\\nI’ve escalated your email to our Finance team, who will review your account and get back to you promptly with the necessary information.\\n\\nWe appreciate your patience.\\n\\nBest regards,\\nNexus Integrations Support Team`\n  }\n};\n\n// Default to support escalation if category not in map\nconst escalation = escalationMap[item.category] || escalationMap['escalate_support'];\n\nreturn [{\n  json: {\n    from: item.from,\n    to: item.to,\n    subject: item.subject,\n    body: item.body,\n    category: item.category,\n    draft_reply: escalation.message,\n    requires_human: true,\n    action: escalation.action,\n    assigned_team: escalation.team\n  }\n}];"
+      },
+      "id": "573c8e8c-45a2-4da3-9e55-bf73ea09aaa8",
+      "name": "Draft Escalation Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Spam / Junk Filter\nconst item = $input.first().json;\n\nif (item.category === 'spam') {\n  return [{\n    json: {\n      from: item.from,\n      to: item.to,\n      subject: item.subject,\n      body: item.body,\n      category: 'spam',\n      draft_reply: '',\n      requires_human: false,\n      action: 'discard'\n    }\n  }];\n}\n\n// All other categories pass through to RAG pipeline\nreturn [{ json: item }];"
+      },
+      "id": "d0f9c84e-da4c-4ebc-81a3-d8df0597b255",
+      "name": "Spam / Junk Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn [{\n  json: {\n    category: data.category || 'escalate_support',\n    draft_reply: data.draft_reply || 'Thank you for contacting Nexus Integrations. We have received your message and a member of our team will be in touch shortly.\\n\\nBest regards,\\nNexus Integrations Support Team'\n  }\n}];"
+      },
+      "id": "7474b4c2-a182-441b-9f1c-1b0b2a5a871d",
+      "name": "Merge All Paths",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ category: $json.category, draft_reply: $json.draft_reply }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "bbb7f05f-fda3-41a7-ba3b-d87a1f03f15f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2720,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an email classification agent for Nexus Integrations. Your job is to classify a customer email into EXACTLY ONE category.\n\nAvailable categories:\n\npricing → Questions about pricing, plans, quotes, cost, billing, or discounts.\nsetup → Questions about installation, configuration, integrations, authentication, or technical setup help.\nsecurity → Questions about security practices, compliance, certifications (SOC 2, ISO 27001), data protection, audits.\nhr → Job applications, resumes, hiring questions, career inquiries.\nescalate_sales → Emails with clear purchase intent, enterprise evaluation, or vendor/partnership interest.\nescalate_support → Urgent or complex technical issues that require human support intervention.\nescalate_legal → Legal matters such as contracts, DPAs, terms disputes, or legal notices.\nescalate_finance → Financial or billing issues requiring finance/operations intervention.\nspam → Marketing, promotions, recruiter outreach, or clearly unsolicited content.\nmisdirected → Emails clearly meant for another company or unrelated to Nexus Integrations.\n\nReference Examples (for pattern recognition):\nUse the following table as a guide to determine the correct category based on the email content. Match similar language, intent, and context from the examples below:\n\nemail_id\tsubject\tbody summary\texpected_category\n1.1\tHelp connecting Salesforce\tUser cannot connect Salesforce, authentication error\tsetup\n2.2\tSOC 2 report for vendor assessment\tRequest for SOC 2/ISO 27001, vendor assessment\tsecurity\n3.3\tEnterprise pricing for large deployment\tLarge enterprise evaluating platform, asks about pricing & integrations\tescalate_sales\n5.1\tMissing invoice for December\tCustomer didn’t receive invoice, asks to resend\tescalate_finance\n5.3\tYour checking account statement\tWrong recipient, unrelated company\tmisdirected\n(You can embed more of the table if needed.)\t\t\t\n\nClassification Rules:\n\nFirst, check if the email matches any example patterns from the reference table.\nGive priority to business intent and escalation when clearly indicated in the examples.\nUse keywords only as supporting evidence, not the main driver.\nOnly choose escalation categories if the intent matches your reference examples.\nIf multiple categories seem possible, pick the one most similar to the examples, not the first keyword match.\nAlways classify the email into exactly one category.\n\n\nReturn Format:\nReturn ONLY valid JSON with this structure:\n{\n\"category\": \"...\",\n\"confidence\": 0.0,\n\"reasoning\": \"...\",\n\"urgency\": \"low|medium|high\"\n}",
+              "role": "system"
+            },
+            {
+              "content": "=FROM: {{ $json.from }}\nTO: {{ $json.to }}\nSUBJECT: {{ $json.subject }}\n\nBODY:\n{{ $json.body }}\n\nAdditional info:\n- isMisdirected: {{ $json.isMisdirected }}\n\nClassify this email into EXACTLY ONE category according to the system rules.\nReturn ONLY valid JSON. Do NOT use markdown, code blocks, or backticks. Do not include explanations outside the JSON. Return exactly this structure:\n{\n  \"category\": \"...\",\n  \"confidence\": 0.0,\n  \"reasoning\": \"...\",\n  \"urgency\": \"low|medium|high\"\n}\nStrictly Ffollow the Output rules"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -64,
+        448
+      ],
+      "id": "3b57615d-22be-459b-a8f2-977a631ce106",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "kvUHkNixF6AQRLU9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a customer support assistant for Nexus Integrations.\n\nYour task is to generate a helpful reply to a customer email.\n\nThe Output should be very strictly in this form \n{\n  \"category\": \"support\",\n  \"draft_reply\": \"Hi Sarah, ...\"\n}\n\nCustomer Email:\n\nFROM: {{$json.from}}\nSUBJECT: {{$json.subject}}\nCategory : {{ $json.category }}\n{{$json.body}}\n\nINSTRUCTIONS:\n\n1. You have access to a vector database (Pinecone Vector Store) containing the official Nexus Integrations knowledge base, documentation, troubleshooting guides, product limitations, pricing plans, and integration instructions.\n\n2. FIRST STEP — RETRIEVAL (MANDATORY):\n   Always search the vector database for relevant information related to the customer's question before answering.\n\n3. ANSWERING RULES:\n\n* If relevant information is found in the vector database, base your answer STRICTLY on that information.\n* Do NOT invent product details, policies, or technical behavior that are not present in the retrieved context.\n* If multiple pieces of context are retrieved, synthesize them into a clear and accurate answer.\n\n4. FALLBACK RULE:\n   If the vector database does NOT contain the answer:\n\n* Respond using safe and reasonable general technical knowledge.\n* Clearly provide helpful guidance or troubleshooting steps.\n* Do NOT fabricate Nexus-specific policies or guarantees.\n\n5. RESPONSE STYLE:\n\n* Professional and friendly customer support tone\n* Clear and concise\n* Directly address the customer’s question\n* Provide step-by-step guidance if troubleshooting is required\n\n6. EMAIL FORMAT:\n   Write a complete reply email including:\n\n* Greeting using the customer's name if available\n* Clear explanation or solution\n* Offer further assistance if needed\n* Professional closing\n\nYour goal is to provide the most accurate and helpful response possible while prioritizing the knowledge stored in the vector database.\n\nCRITICAL: Your ONLY output must be raw JSON. No explanation, no markdown, no backticks. Exactly this structure:\n{\"category\": \"...\", \"draft_reply\": \"...\"}",
+        "options": {
+          "systemMessage": "You are a customer support agent for Nexus Integrations.\n\nYour job is to read incoming customer emails and write a professional reply.\n\nAlways be polite, clear, and helpful.\nYou answers should not be long and should be strictly according to the knowledge base"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1520,
+        384
+      ],
+      "id": "26841661-ad66-477e-be6d-cb914c7c1d9d",
+      "name": "Suppport Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        592
+      ],
+      "id": "0cf7bc08-26ee-4e97-aba1-7c6727c293b7",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "kvUHkNixF6AQRLU9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "You are a professional Email crafter. Depending upn the chat Received. look into the Vector Db and answer and if its not present in the vector Db. Answer it yourself .",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "support-docs",
+          "mode": "list",
+          "cachedResultName": "support-docs"
+        },
+        "includeDocumentMetadata": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1584,
+        608
+      ],
+      "id": "1a1f7255-b0d7-4ef3-acce-72d124bf77ee",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "ULREzw2QrslkFflA",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1872,
+        752
+      ],
+      "id": "d93ec809-66dd-4c26-98ec-369649235154",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "kvUHkNixF6AQRLU9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || '';\n\n// Clean and parse the JSON string the agent returns\nlet parsed;\ntry {\n  const cleaned = raw\n    .replace(/```json/g, '')\n    .replace(/```/g, '')\n    .trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  // If parsing fails, wrap the raw text as draft_reply\n  parsed = {\n    category: 'support',\n    draft_reply: raw\n  };\n}\n\nreturn [{\n  json: {\n    category: parsed.category || 'support',\n    draft_reply: parsed.draft_reply || raw\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        192
+      ],
+      "id": "521315bb-f566-4d26-b9df-abc0181a47dc",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3a743c17-4e46-4569-9517-35204b982e72",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "discard",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        256
+      ],
+      "id": "749f264b-3416-4d1a-af8a-9f1ffb5ebf3e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "content": "Normalise Email — Cleans the raw email data. Strips Markdown formatting, trims whitespace, and checks if the recipient domain belongs to Nexus Integrations. Sets the isMisdirected flag."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -608,
+        336
+      ],
+      "typeVersion": 1,
+      "id": "ffae0218-e0e0-4908-9226-ff8aab13f4b2",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Webhook — Entry point of the workflow. Receives incoming emails via HTTP POST request and passes them into the pipeline.",
+        "height": 112
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -832,
+        64
+      ],
+      "typeVersion": 1,
+      "id": "31f315cb-cab1-4cc3-bc8e-03c6dc9fa043",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Checks the isMisdirected flag. If true, routes to the Misdirected Reply. If false, passes to the AI classifier.",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -384,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "ba20a3ea-62ef-48a2-8122-40b290dc8131",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "ends the email to GPT-4o with a detailed classification prompt. Returns one of 10 categories such as pricing, setup, spam, or escalate_sales along with confidence score and urgency.",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -144,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "44741e0f-861c-47a8-82bd-1c90c6da77d7",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "Parses the raw GPT-4o response, validates the category, and falls back to escalate_support if confidence is below 0.7 or the response is malformed.",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        256,
+        304
+      ],
+      "typeVersion": 1,
+      "id": "4a065e25-d06a-448e-a653-be77954c2683",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "Checks if the category starts with escalate_. If yes, routes to the escalation drafter. If no, passes to the Spam filter.",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        464,
+        592
+      ],
+      "typeVersion": 1,
+      "id": "afc7c333-b6cc-46a2-b270-5dc2a2ac2ad9",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": " The RAG-powered AI agent. Searches the Pinecone knowledge base first, then drafts a helpful email reply based on what it finds. Falls back to general knowledge if nothing is found in the vector store.\nOpenAI Chat Model — The language model (GPT-4o-mini) powering the Support Agent.\nPinecone Vector Store — The knowledge base tool used by the Support Agent. Searches the support-docs index for relevant documentation to answer the customer's question.\nEmbeddings OpenAI — Converts the search query into a vector so Pinecone can find semantically similar documents.",
+        "height": 224,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1856,
+        448
+      ],
+      "typeVersion": 1,
+      "id": "657fcff6-9dd8-495c-bb8d-c51e68e0169b",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "Collects the output from whichever path ran — misdirected, escalation, or support agent — and normalises it into a single clean { category, draft_reply } object.",
+        "height": 144
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2368,
+        -384
+      ],
+      "typeVersion": 1,
+      "id": "ae2746c5-2c6e-409d-8f30-71406203fbc6",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "Sends the final JSON response back to the caller with the category and draft reply.",
+        "height": 80
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2672,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "a46675b2-604e-4d8e-99da-d27684945b66",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "Generates a polite template reply informing the sender they may have reached the wrong company.",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        384,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "0b454303-dd32-401b-87d7-49d89130223f",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "If the email is spam, marks it for discard with an empty reply. All other legitimate emails pass through to the Support Agent.",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        816,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "f8c2fa56-f6cb-4d55-badb-e81eba5771b2",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "Generates a professional escalation reply based on the category. Routes to the correct team — Sales, Engineering, Legal, or Finance.",
+        "height": 128
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        480,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "a7d3d956-ed15-4cfa-851b-5d30a442e053",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "Parses the Support Agent's raw output. Extracts the category and draft_reply fields from the JSON string the agent returns.",
+        "height": 96
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2256,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "872889b7-decf-4049-900a-4cca5a267734",
+      "name": "Sticky Note12"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "from_name": "Jason Miller",
+          "from": "jason@talentscout.com",
+          "to": "support@nexusintegrations.com",
+          "subject": "Top software engineers available now",
+          "body": "Hi there,\n\nI'm a technical recruiter with access to amazing software engineering talent. We specialize in placing senior engineers, architects, and engineering managers.\n\nAre you currently hiring? I have 3 excellent candidates available immediately. Let me know if you'd like to schedule a call.\n\nBest,\nJason Miller\nTalentScout Recruiting"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalise Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Email": {
+      "main": [
+        [
+          {
+            "node": "Misdirected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Misdirected?": {
+      "main": [
+        [
+          {
+            "node": "Misdirected Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Misdirected Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "Needs Escalation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Escalation?": {
+      "main": [
+        [
+          {
+            "node": "Draft Escalation Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Spam / Junk Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Escalation Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spam / Junk Filter": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Paths": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suppport Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Suppport Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "Suppport Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merge All Paths",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Suppport Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c5ac60d3-b87d-4d73-9a3a-17069dd01e14",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cc215d937a42393fe8edd55c5facb019667cb86cf8ee930048135eccac093cc"
+  },
+  "id": "nilZVe2rY9ipcHWz",
+  "tags": []
+}
