@@ -1,0 +1,929 @@
+{
+  "name": "Daily AI & Tech Intelligence Feed",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9ac077ef-dec5-49e6-ade4-8ad7df5850c2",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://hacker-news.firebaseio.com/v0/topstories.json",
+        "options": {}
+      },
+      "id": "f1baae7e-0ae7-4532-bc79-66eafc17e144",
+      "name": "Fetch HN Top IDs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        192
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ids=$input.first().json;const top10=Array.isArray(ids)?ids.slice(0,10):[];return top10.map(id=>({json:{id}}));"
+      },
+      "id": "2ad74bb6-b66e-4bce-95af-0a460195d131",
+      "name": "Slice Top 10 HN IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://hacker-news.firebaseio.com/v0/item/{{ $json.id }}.json",
+        "options": {}
+      },
+      "id": "3d33ebd3-6e59-40f6-a7e9-87e29bc33ae5",
+      "name": "Fetch Each HN Story",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.title ?? \"\" }}"
+            },
+            {
+              "id": "a2",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $json.url ?? (\"https://news.ycombinator.com/item?id=\"+$json.id) }}"
+            },
+            {
+              "id": "a3",
+              "name": "score",
+              "type": "number",
+              "value": "={{ $json.score ?? 0 }}"
+            },
+            {
+              "id": "a4",
+              "name": "source",
+              "type": "string",
+              "value": "Hacker News"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d035e11e-b6cd-45c8-a47a-edfad3b935bb",
+      "name": "Normalize HN",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        208
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "366b4d60-2a2d-4dad-b6ec-db82ac054eb0",
+      "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1056,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "failed_node",
+              "type": "string",
+              "value": "={{ $json.node }}"
+            },
+            {
+              "id": "e2",
+              "name": "error",
+              "type": "string",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "id": "e3",
+              "name": "time",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b92cf79-6ab6-473f-bda7-442076a31943",
+      "name": "Log Fetch Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://dev.to/api/articles?tag=ai&per_page=10&top=1",
+        "options": {}
+      },
+      "id": "ffa6b0ba-1bf7-413e-81ef-d1f9266d2b88",
+      "name": "Fetch Dev.to Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        384
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  const a = item.json;\n\n  return {\n    json: {\n      title: a.title ?? \"\",\n      url: a.url ?? a.canonical_url ?? \"\",\n      score: a.positive_reactions_count ?? 0,\n      source: \"Dev.to\"\n    }\n  };\n});"
+      },
+      "id": "644ba5aa-7f21-4da0-a81e-dd80ebe87ac9",
+      "name": "Extract Dev.to Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.reddit.com/r/artificial/hot.json?limit=10",
+        "options": {}
+      },
+      "id": "6084a394-f09b-4b33-98d9-6cf8718f3a52",
+      "name": "Fetch Reddit r/artificial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        592
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ch=($input.first().json?.data?.children??[]);return ch.map(c=>({json:{title:c.data.title??\"\",url:c.data.url??(\"https://reddit.com\"+(c.data.permalink??\"\")),score:c.data.score??0,source:\"Reddit r/artificial\"}}));"
+      },
+      "id": "f2547243-3565-4273-a49e-539e211e29c8",
+      "name": "Extract Reddit Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "ai",
+              "id": "df1a4452-9234-4172-b6ee-e97dde2d7a02"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "llm",
+              "id": "762fec45-b876-4a94-9044-664e42f99c79"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "gpt",
+              "id": "e471b412-a548-43d2-9826-b584409beee1"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "openai",
+              "id": "28174a69-3db2-4b9d-951d-8cd8746027bb"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "google",
+              "id": "06d1b4b5-3a85-4360-ae46-f546cae7a2d6"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "microsoft",
+              "id": "cc13770d-a081-4966-8ccd-1aa2280e43e5"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "aws",
+              "id": "95081baf-d445-4ab5-a397-b46ec94ad5c5"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "cloud",
+              "id": "7f3b3dc6-cafa-4e5e-8abc-0673f9b01f4c"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "security",
+              "id": "63264344-6ab4-4e37-93a1-4f10a458095d"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "automation",
+              "id": "c906dddf-9b1a-4432-a7e4-616dd43a7516"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "model",
+              "id": "0b2bddbe-31ea-4407-8a04-d7b9039c73f2"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "deepmind",
+              "id": "5402a8fc-4282-4a0c-880a-3e61ddf3f79a"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "anthropic",
+              "id": "2834f421-8841-40d8-9161-53b5a4780d81"
+            },
+            {
+              "leftValue": "={{ $json.title.toLowerCase() }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "machine learning",
+              "id": "8b94db5b-a7fa-4245-808e-8f8bce2119f4"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "f94d4cc4-55c6-4076-996e-256f49b96d45",
+      "name": "Filter Relevant Topics",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1296,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "title",
+        "options": {
+          "removeOtherFields": false
+        }
+      },
+      "id": "0db1ead0-f0a2-4d49-8273-43f5a418f5b4",
+      "name": "Remove Duplicates",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const kw=[\"openai\",\"anthropic\",\"google\",\"microsoft\",\"aws\",\"deepmind\",\"gpt\",\"llm\",\"ai\",\"security\",\"automation\",\"cloud\",\"model\"];const items=$input.all().map(i=>i.json);const scored=items.map(it=>({...it,rs:(it.score||0)+kw.reduce((a,k)=>a+((it.title||\"\").toLowerCase().includes(k)?2:0),0)})).sort((a,b)=>b.rs-a.rs).slice(0,15);return scored.map(it=>({json:it}));"
+      },
+      "id": "fcf7c235-5ab6-4b44-8276-955af0db84b7",
+      "name": "Rank and Limit Top 15",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "articles",
+        "options": {}
+      },
+      "id": "5011c2e1-a564-4dd8-bcd1-715f042c854b",
+      "name": "Aggregate Summaries",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a tech news analyst. Given a news article title, write a 2-3 sentence summary and explain why it matters. Use two sections: \"Summary:\" and \"Why it matters:\""
+            },
+            {
+              "content": "=Title: {{ $json.title }}\nSource: {{ $json.source }}\nURL: {{ $json.url }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 200,
+          "temperature": 0.3
+        }
+      },
+      "id": "8dc5bf0f-753e-41de-9b1d-f4f2d4a03580",
+      "name": "AI Summarize Article",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2160,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "kRiojzoKpYwhSP3K",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Loop Over Articles').item.json.title }}"
+            },
+            {
+              "id": "p2",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $('Loop Over Articles').item.json.url }}"
+            },
+            {
+              "id": "p3",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $('Loop Over Articles').item.json.source }}"
+            },
+            {
+              "id": "p4",
+              "name": "score",
+              "type": "number",
+              "value": "={{ $('Loop Over Articles').item.json.score }}"
+            },
+            {
+              "id": "p5",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $json.output ?? \"No summary.\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cc8cdecf-c82d-4c2e-af61-5415d3255bbc",
+      "name": "Attach Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2512,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c42064b8-aa98-4b72-aa04-f0058e3dd253",
+      "name": "Loop Over Articles",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1968,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are an email generation engine.\n\nYou will receive a list of articles.\n\nYour job:\n- Create a single HTML email digest\n- Summarize and organize content clearly\n- Make it visually appealing\n\nReturn ONLY valid JSON in this format:\n\n{\n  \"subject\": \"string\",\n  \"email\": \"string (full HTML email body)\"\n}\n\nNo explanations. No markdown. No extra text."
+            },
+            {
+              "content": "=Here are the articles:\n\n{{ $json.articles }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2704,
+        80
+      ],
+      "id": "23316903-4b35-4732-be73-f548ab074314",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "kRiojzoKpYwhSP3K",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "shayyanbilal15@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3376,
+        80
+      ],
+      "id": "b43494bc-9f74-47b9-acf7-c3326daab526",
+      "name": "Send a message",
+      "webhookId": "7afea27d-a85d-4af6-8f64-40def8edae95",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NAwTmCKPsknw84JF",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet subject = \"\";\nlet email = \"\";\n\nfor (const item of items) {\n  const raw = item.json.output?.[0]?.content?.[0]?.text || \"\";\n\n  try {\n    // remove markdown escaping issues\n    const cleaned = raw\n      .replace(/```json/g, \"\")\n      .replace(/```/g, \"\")\n      .trim();\n\n    const parsed = JSON.parse(cleaned);\n\n    subject = parsed.subject || \"\";\n    email = parsed.email || \"\";\n\n  } catch (e) {\n    // fallback extraction if JSON parse fails\n    const subjectMatch = raw.match(/\"subject\"\\s*:\\s*\"([^\"]+)\"/);\n    const emailMatch = raw.match(/\"email\"\\s*:\\s*\"([\\s\\S]*)\"/);\n\n    if (subjectMatch) subject = subjectMatch[1];\n    if (emailMatch) email = emailMatch[1];\n  }\n}\n\nreturn [\n  {\n    json: {\n      subject,\n      text: email\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        80
+      ],
+      "id": "584419a2-dc14-452a-bcac-f0e2237c125e",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {
+    "Aggregate Summaries": [
+      {
+        "json": {
+          "articles": [
+            {
+              "title": "How I learn in the age of Ai coding",
+              "url": "https://dev.to/hoomanaskari/how-i-learn-in-the-age-of-ai-coding-53p9",
+              "source": "Dev.to",
+              "score": 7,
+              "summary": "[{\"id\":\"msg_090e5276d908786b0069ec984448e8819eaa6c0073e31f059c\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article explores the author's personal journey of learning coding in an era dominated by AI tools that assist in programming. It highlights the transformative impact of AI on the learning process, emphasizing how these technologies can enhance understanding, streamline coding tasks, and provide instant feedback, ultimately making programming more accessible to beginners.\\n\\n**Why it matters:**  \\nAs AI continues to evolve, its integration into coding education represents a significant shift in how individuals approach learning technical skills. This trend not only democratizes access to programming knowledge but also raises questions about the future role of traditional learning methods and the importance of human creativity in coding. Understanding these changes is crucial for educators, learners, and industry professionals as they adapt to the new landscape of technology-driven education.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "The Hidden Challenge of Multi-LLM Context Management",
+              "url": "https://dev.to/backboardio/the-hidden-challenge-of-multi-llm-context-management-1pbh",
+              "source": "Dev.to",
+              "score": 7,
+              "summary": "[{\"id\":\"msg_0525d50e1f068f000069ec9847ca288191a313e8fbfb8bfb1a\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article discusses the complexities involved in managing context across multiple Large Language Models (LLMs). It highlights the challenges developers face in ensuring coherent interactions and maintaining context consistency when utilizing several LLMs for various tasks, emphasizing the need for effective strategies and tools to streamline this process.\\n\\n**Why it matters:**  \\nAs organizations increasingly adopt multi-LLM strategies to enhance AI capabilities, understanding context management becomes crucial for delivering seamless user experiences. This knowledge can drive innovation in AI applications, improve efficiency, and ultimately influence how businesses leverage AI technology for competitive advantage.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "Your AI agent isn't broken. It just never had a way to learn.",
+              "url": "https://dev.to/denis_m_798d0b203e36d3957/your-ai-agent-isnt-broken-it-just-never-had-a-way-to-learn-11m7",
+              "source": "Dev.to",
+              "score": 5,
+              "summary": "[{\"id\":\"msg_094c1767841b0db50069ec984a077c81a28bf10c42a437ff4d\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:** The article discusses the limitations of current AI agents, emphasizing that many of them lack effective learning mechanisms. It argues that these systems often operate under fixed parameters and do not adapt or improve over time, leading to the perception that they are \\\"broken\\\" when they fail to meet user expectations.\\n\\n**Why it matters:** Understanding the learning capabilities of AI is crucial for developers and users alike, as it highlights the need for more adaptive systems that can evolve based on user interactions. This insight can drive innovation in AI development, leading to more effective and user-friendly applications that can better meet the needs of individuals and businesses.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "OpenClaw Isn't a Chatbot — It's the Unix of Personal AI",
+              "url": "https://dev.to/nilambuilds/openclaw-isnt-a-chatbot-its-the-unix-of-personal-ai-3b9p",
+              "source": "Dev.to",
+              "score": 2,
+              "summary": "[{\"id\":\"msg_0c5207b0128e84010069ec984c6f2c8192b751df0d0208fcf8\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article discusses OpenClaw, a new framework for personal AI that distinguishes itself from traditional chatbots by offering a modular and customizable approach to artificial intelligence. Unlike typical chatbots that operate within predefined parameters, OpenClaw allows users to build and integrate various AI components, much like Unix allows for the combination of different tools to perform complex tasks.\\n\\n**Why it matters:**  \\nOpenClaw's innovative approach could revolutionize how individuals interact with AI, promoting greater personalization and flexibility. By enabling users to tailor their AI experiences, it could lead to more effective and efficient applications across various domains, from personal productivity to specialized professional tasks, ultimately enhancing user autonomy in the AI landscape.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "How I Stopped My AI Agent From Reinventing the Wheel",
+              "url": "https://dev.to/mehmet_tura_cc5b3a70e39b/how-i-stopped-my-ai-agent-from-reinventing-the-wheel-24eo",
+              "source": "Dev.to",
+              "score": 2,
+              "summary": "[{\"id\":\"msg_06e4673a1d90ae2e0069ec985034cc81919bb35ef54b62f690\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article discusses the author's experience in optimizing an AI agent to avoid redundant problem-solving, or \\\"reinventing the wheel.\\\" By implementing strategic guidelines and leveraging existing solutions, the author was able to enhance the efficiency and effectiveness of the AI's performance.\\n\\n**Why it matters:**  \\nThis topic is significant as it highlights the importance of optimizing AI systems to ensure they build on existing knowledge rather than duplicating efforts. As AI continues to evolve and integrate into various sectors, improving its efficiency can lead to faster innovation, reduced resource consumption, and ultimately, more impactful applications in real-world scenarios.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "Cost-engineering an \"AI Generate\" button in a freemium product (from $0.08 to $0.029 per click)",
+              "url": "https://dev.to/crackly/cost-engineering-an-ai-generate-button-in-a-freemium-product-008click-0029click-4dg1",
+              "source": "Dev.to",
+              "score": 1,
+              "summary": "[{\"id\":\"msg_038e5bd07468ee750069ec98541b6c81a0be0dd231461f4c52\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article discusses the cost-reduction strategies implemented for an \\\"AI Generate\\\" button in a freemium product, successfully lowering the cost per click from $0.08 to $0.029. It details the engineering and optimization techniques used to achieve this significant reduction, which enhances the product's viability and user engagement.\\n\\n**Why it matters:**  \\nReducing operational costs in AI-driven features is crucial for maintaining profitability in freemium models, where user acquisition and retention are key. This achievement not only improves the financial sustainability of the product but also allows for more competitive pricing, potentially attracting a larger user base and fostering innovation in AI applications.\"}],\"role\":\"assistant\"}]"
+            },
+            {
+              "title": "A CNN Grid Encoding for Snake AI That DOUBLES! the Best Published Score",
+              "url": "https://dev.to/stat_phantom/a-cnn-grid-encoding-for-snake-ai-that-doubles-the-best-published-score-245p",
+              "source": "Dev.to",
+              "score": 1,
+              "summary": "[{\"id\":\"msg_06d6174b57fbbd140069ec985756b8819ea667cd29beaa4e6d\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"**Summary:**  \\nThe article discusses a novel approach to enhancing Snake AI performance through a Convolutional Neural Network (CNN) grid encoding technique. This innovative method has reportedly doubled the best scores previously published, showcasing significant advancements in AI training and game strategy.\\n\\n**Why it matters:**  \\nThis development is crucial as it not only demonstrates the potential of CNNs in improving AI capabilities but also sets a new benchmark for AI performance in gaming. By pushing the boundaries of what AI can achieve in simple games, it opens up avenues for more complex applications in real-world scenarios, such as robotics and autonomous systems.\"}],\"role\":\"assistant\"}]"
+            }
+          ]
+        },
+        "pairedItem": [
+          {
+            "item": 0
+          },
+          {
+            "item": 1
+          },
+          {
+            "item": 2
+          },
+          {
+            "item": 3
+          },
+          {
+            "item": 4
+          },
+          {
+            "item": 5
+          },
+          {
+            "item": 6
+          }
+        ]
+      }
+    ]
+  },
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch HN Top IDs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Dev.to Posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reddit r/artificial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HN Top IDs": {
+      "main": [
+        [
+          {
+            "node": "Slice Top 10 HN IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Log Fetch Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slice Top 10 HN IDs": {
+      "main": [
+        [
+          {
+            "node": "Fetch Each HN Story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Each HN Story": {
+      "main": [
+        [
+          {
+            "node": "Normalize HN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Log Fetch Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize HN": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Sources": {
+      "main": [
+        [
+          {
+            "node": "Filter Relevant Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Dev.to Posts": {
+      "main": [
+        [
+          {
+            "node": "Extract Dev.to Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Log Fetch Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Dev.to Posts": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Reddit r/artificial": {
+      "main": [
+        [
+          {
+            "node": "Extract Reddit Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Log Fetch Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reddit Posts": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Filter Relevant Topics": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Rank and Limit Top 15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank and Limit Top 15": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Summaries": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Summarize Article": {
+      "main": [
+        [
+          {
+            "node": "Attach Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Summary": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Articles": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Summarize Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "d15ab495-b7d0-4746-938c-21e6e9f13247",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d3d199fccc3970dab0c8a7f1b115125eabfcf9cd2706a3c1419f5ef431a42f1e"
+  },
+  "id": "ATLMLJz9Hctqdvag",
+  "tags": []
+}
